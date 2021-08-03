@@ -1,0 +1,173 @@
+Transform: AWS::Serverless-2016-10-31
+
+# Globals:
+#   set of globals
+
+# Description:
+#   String
+
+# Metadata:
+#   template metadata
+
+Parameters:
+
+  VPC:
+    Type: 'AWS::EC2::VPC::Id'
+  Subnets:
+    Type: 'List<AWS::EC2::Subnet::Id>'
+  RedshiftDeploy:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  RedshiftClusterIdentifier:
+    Type: String
+    Default: ''
+  RedshiftMasterUser:
+    Type: String
+    Default: master    
+  RedshiftMasterUserPassword:
+    Type: String
+  RedshiftDBName:
+    Type: String
+    Default: udacity
+  RedshiftNodeType:
+    Type: String
+    Default: dc2.large
+    AllowedValues:
+      - dc2.large    
+  RedshiftClusterType:
+    Type: String
+    Default: single-node
+    AllowedValues:
+      - single-node
+      - multi-node 
+  RedshiftNumNodes:
+    Type: Number
+    Default: 1 
+  RedshiftPort:
+    Type: Number
+    Default: 5439
+  AirflowUsername:
+    Type: String
+    Default: airflow_redshift_user
+
+# Mappings:
+#   set of mappings
+
+Conditions:
+  RedshiftDeployTrue: 
+    !Equals
+      - 'true'
+      - !Ref RedshiftDeploy
+  RedshiftSingleNodeTrue: !Equals [ !Ref RedshiftClusterType, 'single-node' ]
+  RedshiftClusterIdentifierNull: !Equals [ !Ref RedshiftClusterIdentifier, '']
+
+Resources:
+  RedshiftRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+              - redshift.amazonaws.com
+          Action:
+            - sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'
+
+  RedshiftSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupDescription: Authorise redshift cluster access
+        VpcId: !Ref VPC
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5439
+          ToPort: 5439
+          CidrIp: 0.0.0.0/0
+
+  RedshiftClusterSubnetGroup:
+    Type: AWS::Redshift::ClusterSubnetGroup
+    Properties:
+      Description: Cluster subnet group
+      SubnetIds: !Ref Subnets
+
+  RedshiftCluster:
+    Type: 'AWS::Redshift::Cluster'
+    Condition: RedshiftDeployTrue
+    Properties:
+      ClusterIdentifier: !If [ RedshiftClusterIdentifierNull, !Ref 'AWS::NoValue', !Ref RedshiftClusterIdentifier]
+      MasterUsername: !Ref RedshiftMasterUser
+      MasterUserPassword:  !Ref RedshiftMasterUserPassword
+      DBName: !Ref RedshiftDBName
+      NodeType: !Ref RedshiftNodeType
+      ClusterType: !Ref RedshiftClusterType
+      NumberOfNodes: !If [ RedshiftSingleNodeTrue, !Ref 'AWS::NoValue', !Ref RedshiftNumNodes]
+      VpcSecurityGroupIds:
+        - !Ref RedshiftSecurityGroup
+      ClusterSubnetGroupName: !Ref RedshiftClusterSubnetGroup
+      IamRoles:
+        - !GetAtt RedshiftRole.Arn
+      PubliclyAccessible: true
+      Port: !Ref RedshiftPort
+
+  AirflowRedshiftUser:
+    Type: AWS::IAM::User
+    Properties: 
+      ManagedPolicyArns: 
+        - 'arn:aws:iam::aws:policy/AmazonRedshiftFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'
+      UserName: !Ref AirflowUsername
+
+  AirflowRedshiftUserAccessKey:      
+    Type: AWS::IAM::AccessKey
+    DependsOn: AirflowRedshiftUser
+    Properties: 
+      UserName: !Ref AirflowUsername
+
+  AccountAdminUser:
+    Type: AWS::IAM::User
+    Properties: 
+      ManagedPolicyArns: 
+        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+      UserName: admin
+
+  AdminUserAccessKey:      
+    Type: AWS::IAM::AccessKey
+    DependsOn: AccountAdminUser
+    Properties: 
+      UserName: !Ref AccountAdminUser
+      
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-${AWS::AccountId}'
+      
+Outputs:
+  AirflowRedshiftUserAccessKeyId:
+    Description: Airflow User Access Key ID
+    Value: !Ref AirflowRedshiftUserAccessKey
+  AirflowRedshiftUserSecretAccessKey:
+    Description: Airflow User Secret Access Key
+    Value: !GetAtt AirflowRedshiftUserAccessKey.SecretAccessKey   
+  AdminUserAccessKeyId:
+    Description: Admin User Access Key ID
+    Value: !Ref AdminUserAccessKey
+  AdminUserSecretAccessKey:
+    Description: Admin User Secret Access Key
+    Value: !GetAtt AdminUserAccessKey.SecretAccessKey
+  RedshiftEndpointAddress:
+    Condition: RedshiftDeployTrue
+    Description: Redshift Cluster Endpoint Address
+    Value: !GetAtt RedshiftCluster.Endpoint.Address   
+  RedshiftRoleArn:
+    Description: Redshift Cluster Role ARN
+    Value: !GetAtt RedshiftRole.Arn      
+
+    
