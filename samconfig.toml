@@ -1,0 +1,24 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "udacity-aws-training"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-bll1h91nlnwi"
+s3_prefix = "udacity-aws-training"
+region = "eu-west-2"
+profile = "udacity"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+parameter_overrides = [
+    "VPC=vpc-5c427534",
+    "Subnets=subnet-012d687b,subnet-590c3530,subnet-b4068ef8",
+    "RedshiftDeploy=true",
+    "RedshiftClusterIdentifier=dwhCluster",
+    "RedshiftMasterUser=master",
+    "RedshiftDBName=dwh",
+    "RedshiftNodeType=dc2.large",
+    "RedshiftClusterType=single-node",
+    "RedshiftNumNodes=4",
+    "RedshiftPort=5439",
+    "AirflowUsername=airflow_redshift_user"
+]
