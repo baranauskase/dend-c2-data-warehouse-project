@@ -26,9 +26,7 @@ Parameters:
     Default: ''
   RedshiftMasterUser:
     Type: String
-    Default: master    
-  RedshiftMasterUserPassword:
-    Type: String
+    Default: master
   RedshiftDBName:
     Type: String
     Default: udacity
@@ -98,13 +96,23 @@ Resources:
       Description: Cluster subnet group
       SubnetIds: !Ref Subnets
 
+  RedshiftClusterMasterUserSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: 'This is a Redshift cluster Master user credentials'
+      GenerateSecretString:
+        SecretStringTemplate: !Sub '{"username": "${RedshiftMasterUser}"}'
+        GenerateStringKey: 'password'
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\%'
+
   RedshiftCluster:
     Type: 'AWS::Redshift::Cluster'
     Condition: RedshiftDeployTrue
     Properties:
       ClusterIdentifier: !If [ RedshiftClusterIdentifierNull, !Ref 'AWS::NoValue', !Ref RedshiftClusterIdentifier]
-      MasterUsername: !Ref RedshiftMasterUser
-      MasterUserPassword:  !Ref RedshiftMasterUserPassword
+      MasterUsername: !Sub '{{resolve:secretsmanager:${RedshiftClusterMasterUserSecret}::username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${RedshiftClusterMasterUserSecret}::password}}'
       DBName: !Ref RedshiftDBName
       NodeType: !Ref RedshiftNodeType
       ClusterType: !Ref RedshiftClusterType
@@ -169,5 +177,10 @@ Outputs:
   RedshiftRoleArn:
     Description: Redshift Cluster Role ARN
     Value: !GetAtt RedshiftRole.Arn      
+  RedshiftMasterUser:
+    Description: Redshift master username
+    Value: !Sub '{{resolve:secretsmanager:${RedshiftClusterMasterUserSecret}::username}}'
+  RedshiftMasterPassword:
+    Description: Redshift master password
+    Value: !Sub '{{resolve:secretsmanager:${RedshiftClusterMasterUserSecret}::password}}'    
 
-    
