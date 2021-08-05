@@ -10,11 +10,6 @@ Transform: AWS::Serverless-2016-10-31
 #   template metadata
 
 Parameters:
-
-  VPC:
-    Type: 'AWS::EC2::VPC::Id'
-  Subnets:
-    Type: 'List<AWS::EC2::Subnet::Id>'
   RedshiftDeploy:
     Type: String
     Default: 'false'
@@ -86,15 +81,9 @@ Resources:
         VpcId: !Ref VPC
         SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 5439
-          ToPort: 5439
+          FromPort: !Ref RedshiftPort
+          ToPort: !Ref RedshiftPort
           CidrIp: 0.0.0.0/0
-
-  RedshiftClusterSubnetGroup:
-    Type: AWS::Redshift::ClusterSubnetGroup
-    Properties:
-      Description: Cluster subnet group
-      SubnetIds: !Ref Subnets
 
   RedshiftClusterMasterUserSecret:
     Type: AWS::SecretsManager::Secret
@@ -104,11 +93,21 @@ Resources:
         SecretStringTemplate: !Sub '{"username": "${RedshiftMasterUser}"}'
         GenerateStringKey: 'password'
         PasswordLength: 16
-        ExcludeCharacters: '"@/\%'
+        ExcludePunctuation: true
+        ExcludeCharacters: >
+          '@/\%"
+
+  RedshiftClusterSubnetGroup:
+    Type: AWS::Redshift::ClusterSubnetGroup
+    Properties:
+      Description: Cluster subnet group
+      SubnetIds: 
+        - !Ref PublicSubnet
 
   RedshiftCluster:
     Type: 'AWS::Redshift::Cluster'
     Condition: RedshiftDeployTrue
+    DependsOn: AttachGateway
     Properties:
       ClusterIdentifier: !If [ RedshiftClusterIdentifierNull, !Ref 'AWS::NoValue', !Ref RedshiftClusterIdentifier]
       MasterUsername: !Sub '{{resolve:secretsmanager:${RedshiftClusterMasterUserSecret}::username}}'
@@ -156,7 +155,47 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: !Sub '${AWS::StackName}-${AWS::AccountId}'
-      
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+  
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
 Outputs:
   AirflowRedshiftUserAccessKeyId:
     Description: Airflow User Access Key ID
