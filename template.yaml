@@ -215,11 +215,4 @@ Outputs:
     Value: !GetAtt RedshiftCluster.Endpoint.Address   
   RedshiftRoleArn:
     Description: Redshift Cluster Role ARN
-    Value: !GetAtt RedshiftRole.Arn      
-  RedshiftMasterUser:
-    Description: Redshift master username
-    Value: !Sub '{{resolve:secretsmanager:${RedshiftClusterMasterUserSecret}::username}}'
-  RedshiftMasterPassword:
-    Description: Redshift master password
-    Value: !Sub '{{resolve:secretsmanager:${RedshiftClusterMasterUserSecret}::password}}'    
-
+    Value: !GetAtt RedshiftRole.Arn    
