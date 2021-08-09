@@ -61,23 +61,23 @@ songplay_table_create = ("""
     CREATE TABLE fact_songplay (
         songplay_id VARCHAR PRIMARY KEY,
         start_time TIMESTAMP NOT NULL,
-        user_id VARCHAR NOT NULL,
-        level VARCHAR NOT NULL,
-        song_id VARCHAR,
-        artist_id VARCHAR,
-        session_id VARCHAR,
-        location VARCHAR,
-        user_agent VARCHAR
+        user_id BIGINT,
+        level VARCHAR(8) NOT NULL,
+        song_id VARCHAR(32) NOT NULL,
+        artist_id VARCHAR(32) NOT NULL,
+        session_id BIGINT NOT NULL,
+        location VARCHAR(512),
+        user_agent VARCHAR(512)
     ) diststyle even;
 """)
 
 user_table_create = ("""
     CREATE TABLE dim_user (
-        user_id VARCHAR PRIMARY KEY,
-        first_name VARCHAR,
-        last_name VARCHAR,
-        gender VARCHAR,
-        level VARCHAR
+        user_id BIGINT PRIMARY KEY,
+        first_name VARCHAR(64),
+        last_name VARCHAR(64),
+        gender VARCHAR(1),
+        level VARCHAR(8) NOT NULL
     ) diststyle even;
 """)
 
@@ -104,12 +104,12 @@ artist_table_create = ("""
 time_table_create = ("""
     CREATE TABLE dim_time (
         start_time TIMESTAMP PRIMARY KEY,
-        hour INT,
-        day INT,
-        week INT,
-        month INT,
-        year INT,
-        weekday INT
+        hour INT NOT NULL,
+        day INT NOT NULL,
+        week INT NOT NULL,
+        month INT NOT NULL,
+        year INT NOT NULL,
+        weekday INT NOT NULL
     ) diststyle all;
 """)
 
@@ -141,9 +141,76 @@ staging_songs_copy = ("""
 # FINAL TABLES
 
 songplay_table_insert = ("""
+INSERT INTO fact_songplay (
+    start_time,
+    user_id,
+    level,
+    song_id,
+    artist_id,
+    session_id,
+    location,
+    user_agent
+) 
+SELECT 
+	stg_fs.start_time,
+    stg_fs.user_id,
+    stg_fs.level,
+    stg_fs.song_id,
+    stg_fs.artist_id,
+    stg_fs.session_id,
+    stg_fs.location,
+    stg_fs.user_agent
+FROM (
+  SELECT
+      timestamp 'epoch' + se.ts/1000 * interval '1 second' AS start_time,
+      se.userid as user_id,
+      se.level,
+      ds.song_id,
+      da.artist_id,
+      se.sessionid as session_id,
+      se.location,
+      se.useragent as user_agent
+  FROM stg_events se
+  LEFT JOIN (
+      SELECT DISTINCT artist_id, artist_name
+      FROM stg_songs
+  ) da ON TRIM(da.artist_name) = TRIM(se.artist)
+  LEFT JOIN (
+      SELECT DISTINCT song_id, title
+      FROM stg_songs
+  ) ds ON TRIM(ds.title) = TRIM(se.song)
+) AS stg_fs
+LEFT JOIN fact_songplay fs ON fs.session_id = stg_fs.session_id AND fs.start_time = stg_fs.start_time
+WHERE fs.songplay_id IS NULL
 """)
 
 user_table_insert = ("""
+INSERT INTO dim_user (
+    user_id,
+    first_name,
+    last_name,
+    gender,
+    level
+) 
+SELECT 
+	u.user_id,
+    u.first_name,
+    u.last_name,
+    u.gender,
+    u.level
+FROM (
+  SELECT
+      se.userId AS user_id,
+      se.firstname as first_name,
+      se.lastname as last_name,
+      se.gender,
+      se.level,
+      RANK() OVER(PARTITION BY userId ORDER BY ts DESC) rank
+  FROM stg_events se
+  LEFT JOIN dim_user du on du.user_id = se.userId
+  WHERE userId IS NOT NULL AND du.user_id IS NULL
+) AS u
+WHERE u.rank = 1
 """)
 
 song_table_insert = ("""
@@ -193,6 +260,30 @@ WHERE ranked_stg_songs.rank = 1 AND da.artist_id IS NULL;
 """)
 
 time_table_insert = ("""
+INSERT INTO dim_time (
+    start_time,
+    hour,
+    day,
+    week,
+    month,
+    year,
+    weekday
+) SELECT
+	t.start_time,
+    EXTRACT(hour FROM t.start_time) AS hour,
+    EXTRACT(day FROM t.start_time) AS day,
+    EXTRACT(week FROM t.start_time) AS week,
+    EXTRACT(month FROM t.start_time) AS month,
+    EXTRACT(year FROM t.start_time) AS year,
+    EXTRACT(dayofweek FROM t.start_time) AS weekday
+FROM
+(
+  SELECT 
+      DISTINCT(timestamp 'epoch' + ts/1000 * interval '1 second') AS start_time
+  FROM stg_events
+) AS t
+LEFT JOIN dim_time dt ON dt.start_time = t.start_time
+WHERE dt.start_time IS NULL
 """)
 
 # QUERY LISTS
@@ -201,124 +292,3 @@ create_table_queries = [staging_events_table_create, staging_songs_table_create,
 drop_table_queries = [staging_events_table_drop, staging_songs_table_drop, songplay_table_drop, user_table_drop, song_table_drop, artist_table_drop, time_table_drop]
 copy_table_queries = [staging_events_copy, staging_songs_copy]
 insert_table_queries = [songplay_table_insert, user_table_insert, song_table_insert, artist_table_insert, time_table_insert]
-
-
-
-
-
-
-
-# # INSERT RECORDS
-
-# songplay_table_insert = ("""
-# INSERT INTO songplays (
-#     songplay_id,
-#     start_time,
-#     user_id,
-#     level,
-#     song_id,
-#     artist_id,
-#     session_id,
-#     location,
-#     user_agent
-# ) VALUES (
-#     %s,
-#     %s,
-#     %s,
-#     %s,
-#     %s,
-#     %s,
-#     %s,
-#     %s,
-#     %s
-# );
-# """)
-
-# user_table_insert = ("""
-# INSERT INTO users (
-#     user_id,
-#     first_name,
-#     last_name,
-#     gender,
-#     level
-# ) VALUES (
-#     %s,
-#     %s,
-#     %s,
-#     %s,
-#     %s
-# ) ON CONFLICT ON CONSTRAINT users_pkey DO 
-#     UPDATE SET level = EXCLUDED.level;
-# """)
-
-# song_table_insert = ("""
-# INSERT INTO songs (
-#     song_id,
-#     title,
-#     artist_id,
-#     year,
-#     duration
-# ) VALUES (
-#     %s,
-#     %s,
-#     %s,
-#     %s,
-#     %s    
-# ) ON CONFLICT DO NOTHING;;
-# """)
-
-# artist_table_insert = ("""
-# INSERT INTO artists (
-#     artist_id,
-#     name,
-#     location,
-#     latitude,
-#     longitude
-# ) VALUES (
-#     %s,
-#     %s,
-#     %s,
-#     %s,
-#     %s
-# ) ON CONFLICT DO NOTHING;;
-# """)
-
-
-# time_table_insert = ("""
-# INSERT INTO time (
-#     start_time,
-#     hour,
-#     day,
-#     week,
-#     month,
-#     year,
-#     weekday
-# ) VALUES (
-#     %s,
-#     %s,
-#     %s,
-#     %s,
-#     %s,
-#     %s,
-#     %s
-# ) ON CONFLICT DO NOTHING;;
-# """)
-
-# # FIND SONGS
-
-# song_select = ("""
-# SELECT
-#     s.song_id,
-#     a.artist_id
-# FROM songs s
-# JOIN artists a ON s.artist_id = a.artist_id
-# WHERE
-#     s.title = %s AND
-#     a.name = %s AND
-#     s.duration = %s;
-# """)
-
-# # QUERY LISTS
-
-# create_table_queries = [songplay_table_create, user_table_create, song_table_create, artist_table_create, time_table_create]
-# drop_table_queries = [songplay_table_drop, user_table_drop, song_table_drop, artist_table_drop, time_table_drop]
