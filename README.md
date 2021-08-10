@@ -1,8 +1,8 @@
 # Introduction
 
-In this project, you'll apply what you've learned on data warehouses and AWS to
+In this project, I'll apply what I've learned on data warehouses and AWS to
 build an ETL pipeline for a database hosted on Redshift. To complete the project,
-you will need to load data from S3 to staging tables on Redshift and execute SQL
+I will load data from S3 to staging tables on Redshift and execute SQL
 statements that create the analytics tables from these staging tables.
 
 # Background
@@ -12,12 +12,12 @@ and want to move their processes and data onto the cloud. Their data resides in 
 in a directory of JSON logs on user activity on the app, as well as a directory
 with JSON metadata on the songs in their app.
 
-As their data engineer, you are tasked with building an ETL pipeline that extracts
+As their data engineer, I'm tasked with building an ETL pipeline that extracts
 their data from S3, stages them in Redshift, and transforms data into a set of
 dimensional tables for their analytics team to continue finding insights in what
-songs their users are listening to. You'll be able to test your database and ETL
-pipeline by running queries given to you by the analytics team from Sparkify and
-compare your results with their expected results.
+songs their users are listening to. I'll be able to test the database and ETL
+pipeline by running queries given to me by the analytics team from Sparkify and
+compare my results with their expected results.
 
 # Datasets
 
@@ -70,10 +70,8 @@ And below is an example of what the data in a log file, `2018-11-12-events.json`
 ![alt text](images/log-data.png)
 
 # Development environment
-This project can be implemented on a local machine using Python3 and Docker. The 
-instructions here assume that VS Code is used as a development environment,
-especially the way `ipython` kernel is setup instead of using `jupyter notebook`.
-It is good practice not to contaminate your global Python installation by
+This project is implemented using Python3 and AWS. It is good practice not to
+contaminate your global Python installation by
 installing dependencies that are specific to this project. The first step 
 therefore is to create a virtual Python environment. We will utilise the most
 basic approach by creating an environment using `venv` module. At the root of 
@@ -85,25 +83,26 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Now that the virtual environment is ready. The next step is to spin up a `PostgresSQL`
-server. The cleanest way is to run an official `Docker` container and we can do
-so by deploying the stack.
+Now that the virtual environment is ready. The next step is to spin up a Redshift
+cluster. There is a [SAM](https://aws.amazon.com/serverless/sam/) template,
+which makes it easy to deploy the necessary resources using the concept of
+infrastracture as code.
 
 ```shell
-docker stack deploy -c postgres-stack.yml postgres
+sam deploy --guided
 ```
-If the `Docker` engine is not running in `swarm` mode then it is also possible to
-use `docker-compose` to deploy this stack.
+
+> Please note that the template is not fully productionised and you might encounter
+deployment issues since `VPC` and `Subnet` CIDR blocks are hardcoded. Also the
+cluster is deployed on a public subnet, which is generally not a good practice.  
 
 # Project structure
 
-1. `test.ipynb` displays the first few rows of each table to let us check the database.
-2. `create_tables.py` drops and creates the tables. This file can be run to reset tables.
-3. `etl.ipynb` reads and processes a single file from song_data and log_data and loads the data into the tables. The purpose of this notebook is to analyse the data.
-4. `etl.py` reads and processes all files from song_data and log_data and loads them into the tables.
-5. `sql_queries.py` contains all sql queries.
+1. `create_table.py` is where fact and dimension tables are created for the star schema in Redshift.
+2. `etl.py` is where data is loaded from S3 into staging tables on Redshift and then process that data into the analytics tables on Redshift.
+3. `sql_queries.py` is where SQL statements are defined, which are imported into the two other files above.
+
 
 # Next steps
-- Insert data using the COPY command to bulk insert log files instead of using INSERT on one row at a time
 - Add data quality checks
-- Create a dashboard for analytic queries on the new database
+- Create a dashboard for analytic queries on your new database
