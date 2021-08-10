@@ -59,21 +59,21 @@ staging_songs_table_create = ("""
 
 songplay_table_create = ("""
     CREATE TABLE fact_songplay (
-        songplay_id VARCHAR PRIMARY KEY,
+        songplay_id BIGINT IDENTITY(1, 1),
         start_time TIMESTAMP NOT NULL,
-        user_id BIGINT,
+        user_id BIGINT SORTKEY,
         level VARCHAR(8) NOT NULL,
-        song_id VARCHAR(32) NOT NULL,
-        artist_id VARCHAR(32) NOT NULL,
+        song_id VARCHAR(32) DISTKEY,
+        artist_id VARCHAR(32),
         session_id BIGINT NOT NULL,
         location VARCHAR(512),
         user_agent VARCHAR(512)
-    ) diststyle even;
+    );
 """)
 
 user_table_create = ("""
     CREATE TABLE dim_user (
-        user_id BIGINT PRIMARY KEY,
+        user_id BIGINT PRIMARY KEY SORTKEY,
         first_name VARCHAR(64),
         last_name VARCHAR(64),
         gender VARCHAR(1),
@@ -83,17 +83,17 @@ user_table_create = ("""
 
 song_table_create = ("""
     CREATE TABLE dim_song (
-        song_id VARCHAR(32) PRIMARY KEY,
+        song_id VARCHAR(32) PRIMARY KEY SORTKEY DISTKEY,
         title VARCHAR(256) NOT NULL,
         artist_id VARCHAR(32) NOT NULL,
         year INT NOT NULL,
         duration NUMERIC(10, 5) NOT NULL
-    ) diststyle even;
+    );
 """)
 
 artist_table_create = ("""
     CREATE TABLE dim_artist (
-        artist_id VARCHAR(32) PRIMARY KEY,
+        artist_id VARCHAR(32) PRIMARY KEY SORTKEY,
         name VARCHAR(256) NOT NULL,
         location VARCHAR(512),
         latitude NUMERIC(11, 8),
@@ -103,7 +103,7 @@ artist_table_create = ("""
 
 time_table_create = ("""
     CREATE TABLE dim_time (
-        start_time TIMESTAMP PRIMARY KEY,
+        start_time TIMESTAMP PRIMARY KEY SORTKEY,
         hour INT NOT NULL,
         day INT NOT NULL,
         week INT NOT NULL,
