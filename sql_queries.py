@@ -61,9 +61,9 @@ songplay_table_create = ("""
     CREATE TABLE fact_songplay (
         songplay_id BIGINT IDENTITY(1, 1),
         start_time TIMESTAMP NOT NULL,
-        user_id BIGINT SORTKEY,
+        user_id BIGINT DISTKEY,
         level VARCHAR(8) NOT NULL,
-        song_id VARCHAR(32) DISTKEY,
+        song_id VARCHAR(32) SORTKEY,
         artist_id VARCHAR(32),
         session_id BIGINT NOT NULL,
         location VARCHAR(512),
@@ -73,22 +73,22 @@ songplay_table_create = ("""
 
 user_table_create = ("""
     CREATE TABLE dim_user (
-        user_id BIGINT PRIMARY KEY SORTKEY,
+        user_id BIGINT PRIMARY KEY DISTKEY SORTKEY,
         first_name VARCHAR(64),
         last_name VARCHAR(64),
         gender VARCHAR(1),
         level VARCHAR(8) NOT NULL
-    ) diststyle even;
+    );
 """)
 
 song_table_create = ("""
     CREATE TABLE dim_song (
-        song_id VARCHAR(32) PRIMARY KEY SORTKEY DISTKEY,
+        song_id VARCHAR(32) PRIMARY KEY SORTKEY,
         title VARCHAR(256) NOT NULL,
         artist_id VARCHAR(32) NOT NULL,
         year INT NOT NULL,
         duration NUMERIC(10, 5) NOT NULL
-    );
+    ) diststyle even;
 """)
 
 artist_table_create = ("""
