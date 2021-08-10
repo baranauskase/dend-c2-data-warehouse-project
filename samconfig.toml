@@ -3,9 +3,9 @@ version = 0.1
 [default.deploy]
 [default.deploy.parameters]
 stack_name = "udacity-aws-training"
-s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-bll1h91nlnwi"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-kyxbbftlazto"
 s3_prefix = "udacity-aws-training"
-region = "eu-west-2"
+region = "us-west-2"
 profile = "udacity"
 confirm_changeset = true
 capabilities = "CAPABILITY_NAMED_IAM"

@@ -46,9 +46,6 @@ Parameters:
     Type: String
     Default: airflow_redshift_user
 
-# Mappings:
-#   set of mappings
-
 Conditions:
   RedshiftDeployTrue: 
     !Equals
@@ -150,12 +147,7 @@ Resources:
     DependsOn: AccountAdminUser
     Properties: 
       UserName: !Ref AccountAdminUser
-      
-  S3Bucket:
-    Type: 'AWS::S3::Bucket'
-    Properties:
-      BucketName: !Sub '${AWS::StackName}-${AWS::AccountId}'
-
+    
   VPC:
     Type: AWS::EC2::VPC
     Properties:
