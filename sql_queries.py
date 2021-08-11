@@ -179,6 +179,7 @@ FROM (
       SELECT DISTINCT song_id, title
       FROM stg_songs
   ) ds ON TRIM(ds.title) = TRIM(se.song)
+  WHERE se.page = 'NextSong'
 ) AS stg_fs
 LEFT JOIN fact_songplay fs ON fs.session_id = stg_fs.session_id AND fs.start_time = stg_fs.start_time
 WHERE fs.songplay_id IS NULL
