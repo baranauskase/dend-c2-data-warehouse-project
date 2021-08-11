@@ -103,12 +103,40 @@ cluster is deployed on a public subnet, which is generally not a good practice.
 3. `sql_queries.py` is where SQL statements are defined, which are imported into the two other files above.
 
 
-# Next steps
-- Add data quality checks
-- Create a dashboard for analytic queries on your new database
+# Schema for Song Play Analysis
 
+Using the song and event datasets, I've created a star schema optimized for
+queries on song play analysis. This includes the following tables.
 
+## Staging Tables
 
+- `stg_events` - event data that assumes exactly the same strcture as the raw event data files.
+
+- `stg_songs` - song data that assumes exactly the same structure as the raw song data files. 
+
+## Fact Table
+
+- `fact_songplay` - records in event data associated with song plays i.e. records with *page* `NextSong`. This fact table has the following attributes: *songplay_id*, *start_time*, *user_id*, *level*, *song_id*, *artist_id*, *session_id*, *location*, and *user_agent*.
+
+## Dimension Tables
+
+- `dim_user` - users in the app. This dimension table has the following attributes: *user_id*, *first_name*, *last_name*, *gender*, and *level*.
+
+- `dim_song` - songs in music database. This dimension table has the following attributes: *song_id*, *title*, *artist_id*, *year*, and *duration*.
+
+- `dim_artist` - artists in music database. This dimension table has the following attributes: *artist_id*, *name*, *location*, *lattitude*, and *longitude*.
+
+- `dim_time` - timestamps of records in `fact_songplay` broken down into specific units: *start_time*, *hour*, *day*, *week*, *month*, *year*, and *weekday*.
+
+## ETL
+
+The ETL process in this solution is fairly basic and does not use any workflow frameworks and/or tools. First we run the data definition language (DDL) queries to create all the tables in the database. Then `COPY` queries are executed that load the song and log data from `S3` into the corresponding staging tables. Finally we run queries that select relevant subsets of data from the staging table to populate fact and dimension tables. The loading of data from staging into facts and dimensions also apply the necessary transformations, such as braking down dates into date components, filtering event data, and joining song and event data to derive `fact_songplay` data. 
+
+## Analytics
+
+The purpose of this data warehouse is for the analytics team to find insights into what songs their user like to listen to. The fact and dimension tables allows to easily answer the questions, such as that are the trending songs and/or artists or what specific users like to listen to. Below is an example of a query that builds a list of top three most played songs each week.
+
+```SQL
 WITH weekly_chart AS (
   SELECT
       dt.week,
@@ -136,4 +164,8 @@ SELECT
 FROM weekly_ranked
 WHERE rank < 4
 ORDER BY week, rank
+```
 
+# Next steps
+- Add data quality checks
+- Create a dashboard for analytic queries on your new database
