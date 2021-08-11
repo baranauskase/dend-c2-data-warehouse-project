@@ -106,3 +106,34 @@ cluster is deployed on a public subnet, which is generally not a good practice.
 # Next steps
 - Add data quality checks
 - Create a dashboard for analytic queries on your new database
+
+
+
+WITH weekly_chart AS (
+  SELECT
+      dt.week,
+      ds.title,
+      da.name,
+      COUNT(fs.songplay_id) num_plays
+  FROM fact_songplay fs
+  JOIN dim_song ds ON ds.song_id = fs.song_id
+  JOIN dim_artist da ON da.artist_id = fs.artist_id
+  JOIN dim_time dt ON dt.start_time = fs.start_time
+  GROUP BY dt.week, ds.title, da.name
+), weekly_ranked AS (
+  SELECT 
+    week,
+    title,
+    name,
+    RANK() OVER(PARTITION BY week ORDER BY num_plays DESC) rank
+  FROM weekly_chart
+)
+SELECT 
+    week,
+    title,
+    name,
+    rank
+FROM weekly_ranked
+WHERE rank < 4
+ORDER BY week, rank
+

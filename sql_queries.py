@@ -19,7 +19,7 @@ time_table_drop = "DROP TABLE IF EXISTS dim_time;"
 
 staging_events_table_create= ("""
     CREATE TABLE stg_events (
-        artist VARCHAR(256),
+        artist VARCHAR(512),
         auth VARCHAR(16) NOT NULL,
         firstName VARCHAR(64),
         gender VARCHAR(1),
@@ -32,7 +32,7 @@ staging_events_table_create= ("""
         page VARCHAR(64) NOT NULL,
         registration BIGINT,
         sessionId BIGINT NOT NULL,
-        song VARCHAR(256),
+        song VARCHAR(512),
         status INT NOT NULL,
         ts BIGINT NOT NULL,
         userAgent VARCHAR(512),
@@ -48,9 +48,9 @@ staging_songs_table_create = ("""
         artist_latitude NUMERIC(11, 8),
         artist_longitude NUMERIC(11, 8),
         artist_location VARCHAR(512),
-        artist_name VARCHAR(256) NOT NULL,
+        artist_name VARCHAR(512) NOT NULL,
         song_id VARCHAR(32) NOT NULL,
-        title VARCHAR(256) NOT NULL,
+        title VARCHAR(512) NOT NULL,
         duration NUMERIC(10, 5) NOT NULL,
         year INT  NOT NULL,
         PRIMARY KEY(song_id)
@@ -84,7 +84,7 @@ user_table_create = ("""
 song_table_create = ("""
     CREATE TABLE dim_song (
         song_id VARCHAR(32) PRIMARY KEY SORTKEY,
-        title VARCHAR(256) NOT NULL,
+        title VARCHAR(512) NOT NULL,
         artist_id VARCHAR(32) NOT NULL,
         year INT NOT NULL,
         duration NUMERIC(10, 5) NOT NULL
@@ -94,7 +94,7 @@ song_table_create = ("""
 artist_table_create = ("""
     CREATE TABLE dim_artist (
         artist_id VARCHAR(32) PRIMARY KEY SORTKEY,
-        name VARCHAR(256) NOT NULL,
+        name VARCHAR(512) NOT NULL,
         location VARCHAR(512),
         latitude NUMERIC(11, 8),
         longitude NUMERIC(11, 8)

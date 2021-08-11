@@ -188,6 +188,12 @@ Resources:
       SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
 
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-${AWS::AccountId}'
+
+
 Outputs:
   AirflowRedshiftUserAccessKeyId:
     Description: Airflow User Access Key ID
